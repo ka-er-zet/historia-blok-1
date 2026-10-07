@@ -1,0 +1,14 @@
+name = "historia-ocenianie"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Strony, które mogą korzystać z oceniania (adres GitHub Pages + lokalne testy)
+ALLOWED_ORIGINS = "https://ka-er-zet.github.io,http://localhost:8000,http://127.0.0.1:8000"
+
+# Najwyżej 20 ocen na minutę z jednego adresu IP
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

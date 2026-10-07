@@ -1,0 +1,6 @@
+*.jpg
+*.jpeg
+*.MP.jpg
+node_modules/
+.wrangler/
+.dev.vars
