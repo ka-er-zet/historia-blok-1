@@ -207,7 +207,8 @@
     <div class="lesson-pick" id="lesson-pick"></div>
     <div class="start-btns">
       <button id="start-btn" class="primary-btn">Rozpocznij sprawdzian</button>
-      <button id="quiz-btn" class="primary-btn gold-btn">🎯 Tylko kartkówka: „Czas w historii"</button>
+      <button id="quiz-btn-4" class="primary-btn gold-btn">🎯 Kartkówka: Czas w historii</button>
+      <button id="quiz-btn-5" class="primary-btn gold-btn">🎯 Kartkówka: Obliczanie czasu</button>
     </div>
   </section>
 
@@ -632,7 +633,8 @@ function renderTimeline(container, cfg, onAnswer){
     const p=pt.matrixTransform(svg.getScreenCTM().inverse());
     let v = min + (p.x-pad)/(W-2*pad)*(max-min);
     v = Math.max(min, Math.min(max, v));
-    chosen = cfg.mode==='side' ? Math.round(v) : Math.round(v/50)*50;
+    const snap=cfg.snap??50;
+    chosen = cfg.mode==='side' ? Math.round(v) : Math.round(v/snap)*snap;
     if(cfg.mode==='side' && Math.abs(chosen)<25) chosen = chosen<0?-25:25;
     check.disabled=false;
     draw(false);
@@ -687,7 +689,7 @@ const LESSONS = [
   'Obliczanie czasu w historii',
   'Jak dawniej mierzono czas?'
 ];
-const QUIZ_LESSON = 4;
+const QUIZ_LESSONS = [4,5];
 const Q = [];
 const openQ = (lesson, spec) => Q.push({ lesson, open:true, render(c,a){ intro(c, qi(spec.q)); renderOpen(c, spec, a); } });
 
@@ -1030,20 +1032,36 @@ Q.push({ lesson:4,
 });
 
 /* ---------- Lekcja 5 ---------- */
+// Losowy rok, który NIE kończy się na 00, i rok, który kończy się na 00
+const yearNot00 = (lo,hi) => { let y; do { y=rnd(lo,hi); } while(y%100===0); return y; };
+const year00 = (lo,hi) => rnd(Math.ceil(lo/100),Math.floor(hi/100))*100;
 Q.push({ lesson:5,
-  hint:'Odrzucamy dwie ostatnie cyfry i dodajemy 1 (1410 → 14 + 1 → XV wiek). Jeśli rok kończy się na 00, <b>nie dodajemy</b> jedynki (1000 → X wiek, 1300 → XIII wiek).',
+  hint:'Odrzucamy dwie ostatnie cyfry i dodajemy 1 (1920 → 19 + 1 → XX wiek). Jeśli rok kończy się na 00, <b>nie dodajemy</b> jedynki (1000 → X wiek, 1300 → XIII wiek).',
   render(c,a){
-    const ys = [...pick([1410,1333,1928,1655,476,966,1492,1918,1569,1791,2026,1683],2), pick([1000,1300,1900,1500,800,2000],1)[0]];
+    const ys = [yearNot00(1000,2099), yearNot00(101,999), year00(100,2000)];
     intro(c, qi('W którym wieku miały miejsce wydarzenia z tych lat? Wpisz cyframi rzymskimi.'));
     renderFields(c, shuffle(ys).map(y=>({label:`${y} r. →`, suffix:'wiek', accepted:[toRoman(century(y)), century(y)], roman:true})), a);
   }
 });
 Q.push({ lesson:5,
-  hint:'Dla lat p.n.e. robimy to samo: odrzucamy dwie ostatnie cyfry i dodajemy 1 (480 p.n.e. → 4 + 1 → V wiek p.n.e.). Gdy rok kończy się na 00, nie dodajemy 1 (500 p.n.e. → V wiek p.n.e.).',
+  hint:'Dla lat p.n.e. robimy to samo: odrzucamy dwie ostatnie cyfry i dodajemy 1 (480 p.n.e. → 4 + 1 → V wiek p.n.e.). Gdy rok kończy się na 00, nie dodajemy 1 (500 p.n.e. → V wiek p.n.e.). Lata poniżej 100 to I wiek p.n.e.',
   render(c,a){
-    const ys = [...pick([480,43,753,1250,250,69,333,2560],1), pick([100,500,1000,300],1)[0]];
+    const ys = [yearNot00(101,3000), Math.random()<.5 ? rnd(1,99) : yearNot00(101,1999), year00(100,3000)];
     intro(c, qi('W którym wieku p.n.e. miały miejsce te wydarzenia?'));
     renderFields(c, shuffle(ys).map(y=>({label:`${y} r. p.n.e. →`, suffix:'wiek p.n.e.', accepted:[toRoman(century(y)), century(y)], roman:true})), a);
+  }
+});
+Q.push({ lesson:5,
+  hint:'Wiek naszej ery zaczyna się w roku z końcówką <b>01</b>, a kończy w roku z końcówką <b>00</b> (XV wiek: 1401–1500). Wiek p.n.e. odwrotnie: zaczyna się w roku z końcówką <b>00</b>, a kończy w roku z końcówką <b>01</b> (V wiek p.n.e.: 500–401 p.n.e.).',
+  render(c,a){
+    const pne = Math.random()<.4, n = pne ? rnd(1,30) : rnd(2,21);
+    if(pne){
+      intro(c, qi(`Od którego do którego roku trwał <u>${toRoman(n)} wiek p.n.e.</u>?`));
+      renderFields(c, [{label:'od', suffix:'r. p.n.e.', accepted:[n*100], numeric:true},{label:'do', suffix:'r. p.n.e.', accepted:[(n-1)*100+1], numeric:true}], a);
+    } else {
+      intro(c, qi(`Od którego do którego roku trwał <u>${toRoman(n)} wiek</u>?`));
+      renderFields(c, [{label:'od', suffix:'r.', accepted:[(n-1)*100+1], numeric:true},{label:'do', suffix:'r.', accepted:[n*100], numeric:true}], a);
+    }
   }
 });
 Q.push({ lesson:5,
@@ -1054,27 +1072,54 @@ Q.push({ lesson:5,
   }
 });
 Q.push({ lesson:5,
-  hint:'Dla wydarzeń z <b>naszej ery</b>: od daty późniejszej (większej) odejmujemy wcześniejszą (mniejszą).',
+  hint:'Dla wydarzeń z <b>naszej ery</b>: od daty późniejszej (większej) odejmujemy wcześniejszą (mniejszą). Np. od 1310 r. do 1333 r.: 1333 – 1310 = 23 lata.',
   render(c,a){
-    const x=rnd(1001,1899), y=x+rnd(7,180);
+    const x=rnd(1,1980), y=rnd(x+5,2026);
     intro(c, qi(`Ile lat minęło od ${x} r. do ${y} r.?`));
     renderInput(c,[y-x],a,{numeric:true, suffix:'lat', placeholder:'liczba'});
   }
 });
-Q.push({ lesson:5,
-  hint:'Dla wydarzeń <b>przed naszą erą</b>: od daty wcześniejszej (większej liczby) odejmujemy późniejszą (mniejszą). Np. Kleopatra: 69 – 30 = 39 lat.',
+for(let k=0;k<2;k++) Q.push({ lesson:5,
+  hint:'Dla wydarzeń <b>przed naszą erą</b>: od daty wcześniejszej (większej liczby) odejmujemy późniejszą (mniejszą). Np. od 1880 r. p.n.e. do 20 r. p.n.e.: 1880 – 20 = 1860 lat.',
   render(c,a){
-    const x=rnd(120,900), y=x-rnd(6,95);
+    const x = Math.random()<.5 ? rnd(3,30)*100 - rnd(0,1)*rnd(1,99) : rnd(200,3000), y = rnd(1, x-10);
     intro(c, qi(`Ile lat minęło od ${x} r. p.n.e. do ${y} r. p.n.e.?`));
     renderInput(c,[x-y],a,{numeric:true, suffix:'lat', placeholder:'liczba'});
   }
 });
-Q.push({ lesson:5,
+for(let k=0;k<2;k++) Q.push({ lesson:5,
   hint:'Gdy daty są z <b>różnych er</b>: dodajemy obie daty i <b>odejmujemy 1</b>, bo nie było roku zerowego. Np. Oktawian August: 63 + 14 – 1 = 76 lat.',
   render(c,a){
-    const x=rnd(5,95), y=rnd(5,95);
+    const x=rnd(1,1500), y=rnd(1,2026);
     intro(c, qi(`Ile lat minęło od ${x} r. p.n.e. do ${y} r. n.e.?`));
     renderInput(c,[x+y-1],a,{numeric:true, suffix:'lat', placeholder:'liczba'});
+  }
+});
+// Osie czasu w różnych skalach (ostatnia jak w zeszycie: od 200 p.n.e. do 1000 n.e.)
+const AXES = [
+  {min:-1000, max:1000, tick:100, label:500, snap:50},
+  {min:-2000, max:2000, tick:250, label:1000, snap:250},
+  {min:-200, max:1000, tick:100, label:200, snap:50}
+];
+function axisTarget(ax){
+  const opts=[];
+  for(let v=ax.min+ax.snap; v<ax.max; v+=ax.snap) if(v!==0 && v%ax.label!==0) opts.push(v);
+  return pick(opts,1)[0];
+}
+for(let k=0;k<2;k++) Q.push({ lesson:5,
+  hint:'Najpierw znajdź narodziny Jezusa (1 r. n.e.): lata <b>p.n.e.</b> są po lewej, lata <b>n.e.</b> po prawej. Sprawdź, ile lat oznacza jedna kreska (różnica między sąsiednimi podpisami podzielona przez liczbę odstępów), i odlicz.',
+  render(c,a){
+    const ax=pick(AXES,1)[0], t=axisTarget(ax);
+    intro(c, qi(`Zaznacz na linii chronologicznej <u>${fmtYear(t)}</u>.`));
+    renderTimeline(c,{mode:'place',target:t,...ax},a);
+  }
+});
+Q.push({ lesson:5,
+  hint:'Sprawdź, po której stronie narodzin Jezusa jest znacznik (lewa – p.n.e., prawa – n.e.), ile lat oznacza jedna kreska, i odlicz od najbliższego podpisu.',
+  render(c,a){
+    const ax=pick(AXES,1)[0], t=axisTarget(ax);
+    intro(c, qi('Jaki rok zaznaczono na linii chronologicznej? Dopisz p.n.e. albo n.e.'));
+    renderTimeline(c,{mode:'read',target:t,...ax},a);
   }
 });
 Q.push({ lesson:5,
@@ -1137,7 +1182,7 @@ const state = { list:[], index:0, score:0, perLesson:{}, review:[] };
 const pickEl=$('lesson-pick');
 for(let l=1;l<LESSONS.length;l++){
   const n=Q.filter(q=>q.lesson===l).length, w=Q.filter(q=>q.lesson===l&&q.open).length;
-  pickEl.insertAdjacentHTML('beforeend',`<label><input type="checkbox" value="${l}" checked> <span>${l}. ${LESSONS[l]}${l===QUIZ_LESSON?' <span class="star">· kartkówka</span>':''}</span><span class="cnt">${n} pyt.${w?` · ✍️ ${w}`:''}</span></label>`);
+  pickEl.insertAdjacentHTML('beforeend',`<label><input type="checkbox" value="${l}" checked> <span>${l}. ${LESSONS[l]}${QUIZ_LESSONS.includes(l)?' <span class="star">· kartkówka</span>':''}</span><span class="cnt">${n} pyt.${w?` · ✍️ ${w}`:''}</span></label>`);
 }
 const boxes=()=>[...pickEl.querySelectorAll('input')];
 function refreshStart(){ $('start-btn').disabled = !boxes().some(b=>b.checked); }
@@ -1231,7 +1276,7 @@ function showResults(){
 }
 
 $('start-btn').onclick=()=>startQuiz(boxes().filter(b=>b.checked).map(b=>+b.value));
-$('quiz-btn').onclick=()=>startQuiz([QUIZ_LESSON]);
+QUIZ_LESSONS.forEach(l=>{ $('quiz-btn-'+l).onclick=()=>startQuiz([l]); });
 $('restart-btn').onclick=()=>{ resultScreen.hidden=true; startScreen.hidden=false; };
 nextBtn.onclick=goNext;
 </script>
